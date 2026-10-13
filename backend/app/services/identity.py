@@ -135,6 +135,8 @@ class UserService:
                 raise NotFoundError("Role not found")
             data["role_id"] = role.id
         if "password" in data:
+            if current_user.role.name != UserRoleName.ADMIN.value:
+                raise ForbiddenError("Only admins can reset passwords")
             data["hashed_password"] = hash_password(data.pop("password"))
             data["token_version"] = user.token_version + 1
         if "custom_data" in data:

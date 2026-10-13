@@ -2,9 +2,10 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.schemas.common import ORMModel
+from app.schemas.text_rules import reject_password_spaces, reject_person_name_spaces
 
 
 class PermissionResponse(ORMModel):
@@ -45,6 +46,16 @@ class UserCreate(BaseModel):
     is_active: bool = True
     custom_data: dict = Field(default_factory=dict)
 
+    @field_validator("password")
+    @classmethod
+    def password_has_no_spaces(cls, value: str) -> str:
+        return reject_password_spaces(value)
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_spacing(cls, value: str) -> str:
+        return reject_person_name_spaces(value)
+
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = Field(None, min_length=2, max_length=255)
@@ -53,6 +64,20 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     custom_data: Optional[dict] = None
     password: Optional[str] = Field(None, min_length=8, max_length=128)
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_spacing(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        return reject_person_name_spaces(value)
+
+    @field_validator("password")
+    @classmethod
+    def password_has_no_spaces(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        return reject_password_spaces(value)
 
 
 class UserResponse(ORMModel):

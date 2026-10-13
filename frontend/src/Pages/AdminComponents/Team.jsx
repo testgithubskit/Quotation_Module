@@ -3,7 +3,7 @@ import {
   Button, Form, Input, Modal, Popconfirm, Select, Space, Table, Tooltip, Typography, message,
 } from 'antd';
 import {
-  PlusOutlined, DeleteOutlined, EditOutlined, CheckOutlined, CloseOutlined,
+  PlusOutlined, DeleteOutlined, EditOutlined, CheckOutlined, CloseOutlined, LockOutlined,
 } from '@ant-design/icons';
 import { api, getApiErrorMessage } from '../../config/auth.js';
 import TableToolbar from '../../Components/TableToolbar';
@@ -16,6 +16,7 @@ import {
   phoneFieldRules,
   phoneInputProps,
 } from '../../utils/phoneValidation.js';
+import { passwordNoSpaceRules, personNameError, personNameRules } from '../../utils/namePasswordValidation.js';
 
 const ROLE_OPTIONS = [
   { value: 'ADMIN', label: 'Admin' },
@@ -34,7 +35,10 @@ export default function Team() {
   const [columnOpen, setColumnOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({});
+  const [resetUser, setResetUser] = useState(null);
+  const [resetting, setResetting] = useState(false);
   const [form] = Form.useForm();
+  const [passwordForm] = Form.useForm();
 
   const customFields = useMemo(
     () => fields.filter((f) => f.entity_type === 'USER'),
@@ -111,9 +115,10 @@ export default function Team() {
   };
 
   const saveEdit = async (record) => {
-    const full_name = String(draft.full_name || '').trim();
-    if (full_name.length < 2) {
-      message.error('Name is required');
+    const full_name = String(draft.full_name || '');
+    const nameError = personNameError(full_name, 'Name');
+    if (nameError) {
+      message.error(nameError);
       return;
     }
     if (draft.phone && !isValidPhone(draft.phone)) {
@@ -176,6 +181,26 @@ export default function Team() {
       load();
     } catch (error) {
       message.error(getApiErrorMessage(error, 'Create failed'));
+    }
+  };
+
+  const openReset = (record) => {
+    passwordForm.resetFields();
+    setResetUser(record);
+  };
+
+  const savePassword = async () => {
+    const values = await passwordForm.validateFields();
+    setResetting(true);
+    try {
+      await api.put(`/users/${resetUser.id}`, { password: values.password });
+      message.success('Password updated. The user must sign in with the new password.');
+      setResetUser(null);
+      passwordForm.resetFields();
+    } catch (error) {
+      message.error(getApiErrorMessage(error, 'Could not update password'));
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -275,7 +300,7 @@ export default function Team() {
     {
       title: 'Actions',
       key: 'actions',
-      width: 120,
+      width: 148,
       fixed: 'right',
       render: (_, record) => (
         editingId === record.id
@@ -289,6 +314,9 @@ export default function Team() {
             <Space>
               <Tooltip title="Edit user">
                 <Button type="text" icon={<EditOutlined />} onClick={() => startEdit(record)} />
+              </Tooltip>
+              <Tooltip title="Reset password">
+                <Button type="text" icon={<LockOutlined />} onClick={() => openReset(record)} />
               </Tooltip>
               {record.role_name !== 'ADMIN' && (
                 <Tooltip title="Delete user">
@@ -380,7 +408,7 @@ export default function Team() {
         keyboard={false}
       >
         <Form form={form} layout="vertical" initialValues={{ role_name: 'USER' }}>
-          <Form.Item name="full_name" label="Full name" rules={[{ required: true }]}>
+          <Form.Item name="full_name" label="Full name" rules={personNameRules({ label: 'Name' })}>
             <Input />
           </Form.Item>
           <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}>
@@ -397,7 +425,7 @@ export default function Team() {
           <Form.Item name="role_name" label="Role" rules={[{ required: true }]}>
             <Select options={ROLE_OPTIONS} />
           </Form.Item>
-          <Form.Item name="password" label="Password" rules={[{ required: true, min: 8 }]}>
+          <Form.Item name="password" label="Password" rules={passwordNoSpaceRules()}>
             <Input.Password />
           </Form.Item>
           {customFields.map((f) => {
@@ -416,6 +444,47 @@ export default function Team() {
               </Form.Item>
             );
           })}
+        </Form>
+      </Modal>
+
+      <Modal
+        title={resetUser ? `Reset password — ${resetUser.full_name}` : 'Reset password'}
+        open={Boolean(resetUser)}
+        onCancel={() => {
+          if (resetting) return;
+          setResetUser(null);
+          passwordForm.resetFields();
+        }}
+        onOk={savePassword}
+        okText="Update password"
+        confirmLoading={resetting}
+        destroyOnHidden
+        maskClosable={false}
+        keyboard={false}
+      >
+        <Typography.Paragraph type="secondary" className="!mb-3">
+          The old password stops working. Share the new password with this user.
+        </Typography.Paragraph>
+        <Form form={passwordForm} layout="vertical">
+          <Form.Item name="password" label="New password" rules={passwordNoSpaceRules()}>
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+          <Form.Item
+            name="confirm"
+            label="Confirm password"
+            dependencies={['password']}
+            rules={[
+              ...passwordNoSpaceRules({ requiredMessage: 'Confirm password' }),
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) return Promise.resolve();
+                  return Promise.reject(new Error('Passwords do not match'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
         </Form>
       </Modal>
 

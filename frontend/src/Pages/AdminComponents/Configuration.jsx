@@ -14,6 +14,7 @@ import {
   hideOrganizationBuiltinColumn,
   updateOrganizationBuiltinColumn,
 } from '../../utils/organizationColumns.js';
+import { personNameRules } from '../../utils/namePasswordValidation.js';
 
 function OrgDetails() {
   const { refreshMe } = useAuth();
@@ -175,7 +176,7 @@ function OrgDetails() {
             <Form form={form} layout="vertical" disabled={!editing}>
               <Row gutter={[24, 0]}>
                 <Col xs={24} md={12}>
-                  <Form.Item name="name" label="Company name" rules={[{ required: true }]}>
+                  <Form.Item name="name" label="Company name" rules={personNameRules({ label: 'Organization name' })}>
                     <Input size="large" />
                   </Form.Item>
                 </Col>

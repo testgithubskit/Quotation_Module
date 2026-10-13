@@ -10,7 +10,6 @@ import {
 } from '@ant-design/icons';
 import Notification from './AdminComponents/Notification';
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import Footer from '../Components/Footer';
 import Navbar from '../Components/Navbar';
 import RequireRole from '../Components/RequireRole';
 import Sidebar from '../Components/sidebar';
@@ -76,7 +75,6 @@ function AdminShell() {
         <Content className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 font-sans">
           <Outlet />
         </Content>
-        <Footer />
       </Layout>
     </Layout>
   );

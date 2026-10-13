@@ -10,6 +10,7 @@ import {
   phoneInputProps,
 } from '../utils/phoneValidation.js';
 import DotField from '../Components/DotField';
+import { passwordNoSpaceRules, personNameRules } from '../utils/namePasswordValidation.js';
 
 export default function Login() {
   const { login, registerOrganization, getApiErrorMessage } = useAuth();
@@ -29,6 +30,11 @@ export default function Login() {
 
   const showLogin = () => {
     setMode('login');
+    setSignupStep(0);
+  };
+
+  const clearSignup = () => {
+    signupForm.resetFields();
     setSignupStep(0);
   };
 
@@ -130,7 +136,7 @@ export default function Login() {
               <Form.Item
                 name="password"
                 label="Password"
-                rules={[{ required: true, message: 'Enter your password' }]}
+                rules={passwordNoSpaceRules({ min: 0 })}
               >
                 <Input.Password
                   size="large"
@@ -197,14 +203,17 @@ export default function Login() {
                 <Form.Item
                   name="organization_name"
                   label="Organization name"
-                  rules={[{ required: true, message: 'Required' }, { min: 2 }]}
+                  rules={personNameRules({ label: 'Organization name' })}
                 >
                   <Input size="large" placeholder="Precision Labs Pvt Ltd" className="!rounded-lg" />
                 </Form.Item>
                 <Form.Item
                   name="organization_code"
                   label="Organization code"
-                  rules={[{ required: true, message: 'Required' }, { min: 2 }, { max: 50 }]}
+                  rules={[
+                    ...personNameRules({ label: 'Organization code' }),
+                    { max: 50, message: 'Organization code must be at most 50 characters' },
+                  ]}
                 >
                   <Input size="large" placeholder="PRECLAB" className="!rounded-lg uppercase" />
                 </Form.Item>
@@ -215,24 +224,32 @@ export default function Login() {
                 >
                   <Input.TextArea size="large" rows={3} placeholder="Street, city, PIN" className="!rounded-lg" />
                 </Form.Item>
-                <Button
-                  type="primary"
-                  size="large"
-                  block
-                  onClick={goToAdminStep}
-                  className="!h-11 !rounded-full !bg-teal-600 !font-semibold hover:!bg-teal-700"
-                  icon={<ArrowRightOutlined />}
-                  iconPlacement="end"
-                >
-                  Continue
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="large"
+                    className="!h-11 !rounded-full"
+                    onClick={clearSignup}
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    type="primary"
+                    size="large"
+                    className="!h-11 flex-1 !rounded-full !bg-teal-600 !font-semibold hover:!bg-teal-700"
+                    onClick={goToAdminStep}
+                    icon={<ArrowRightOutlined />}
+                    iconPlacement="end"
+                  >
+                    Continue
+                  </Button>
+                </div>
               </div>
 
               <div className={signupStep === 1 ? 'block' : 'hidden'}>
                 <Form.Item
                   name="full_name"
                   label="Admin full name"
-                  rules={[{ required: true, message: 'Required' }, { min: 2 }]}
+                  rules={personNameRules({ label: 'Name' })}
                 >
                   <Input size="large" placeholder="Your name" className="!rounded-lg" />
                 </Form.Item>
@@ -257,7 +274,7 @@ export default function Login() {
                 <Form.Item
                   name="password"
                   label="Password"
-                  rules={[{ required: true, message: 'Required' }, { min: 8, message: 'Min 8 characters' }]}
+                  rules={passwordNoSpaceRules()}
                 >
                   <Input.Password size="large" autoComplete="off" className="!rounded-lg" />
                 </Form.Item>
@@ -266,7 +283,7 @@ export default function Login() {
                   label="Confirm password"
                   dependencies={['password']}
                   rules={[
-                    { required: true, message: 'Confirm password' },
+                    ...passwordNoSpaceRules({ requiredMessage: 'Confirm password' }),
                     ({ getFieldValue }) => ({
                       validator(_, value) {
                         if (!value || getFieldValue('password') === value) return Promise.resolve();
@@ -278,6 +295,14 @@ export default function Login() {
                   <Input.Password size="large" autoComplete="off" className="!rounded-lg" />
                 </Form.Item>
                 <div className="flex gap-2">
+                  <Button
+                    size="large"
+                    className="!h-11 !rounded-full"
+                    onClick={clearSignup}
+                    disabled={signupLoading}
+                  >
+                    Clear
+                  </Button>
                   <Button
                     size="large"
                     className="!h-11 !rounded-full"

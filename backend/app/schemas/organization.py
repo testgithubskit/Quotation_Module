@@ -2,9 +2,10 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.schemas.common import ORMModel
+from app.schemas.text_rules import reject_person_name_spaces
 
 
 class OrganizationCreate(BaseModel):
@@ -29,6 +30,13 @@ class OrganizationUpdate(BaseModel):
     notes: Optional[str] = None
     is_active: Optional[bool] = None
     custom_data: Optional[dict] = None
+
+    @field_validator("name")
+    @classmethod
+    def name_spacing(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        return reject_person_name_spaces(value, "Organization name")
 
 
 class OrganizationResponse(ORMModel):
