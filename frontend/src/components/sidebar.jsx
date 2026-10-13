@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Badge, Layout, Menu } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import qmIcon from '../assets/Qm Icon.png';
 import { cn } from '../utils/cn';
 
 function withMenuBadges(items, badgeByKey = {}, collapsed = false) {
@@ -83,10 +84,12 @@ export default function Sidebar({
       className="app-side !border-r !border-slate-200 !bg-white"
     >
       <div className="flex h-full flex-col font-sans">
-        <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-4">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-teal-500 text-sm font-bold tracking-wide text-white">
-            QM
-          </div>
+        <div className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 px-4">
+          <img
+            src={qmIcon}
+            alt="Quotation Module"
+            className="h-11 w-11 shrink-0 object-contain"
+          />
           {!collapsed ? (
             <span className="truncate text-base font-semibold tracking-tight text-slate-800">
               Quotation Module

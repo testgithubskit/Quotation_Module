@@ -25,7 +25,7 @@ export default function Navbar({ title = '' }) {
   };
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5">
       <h1 className="m-0 truncate text-lg font-semibold text-slate-800">{title}</h1>
       <Dropdown
         trigger={['click']}
