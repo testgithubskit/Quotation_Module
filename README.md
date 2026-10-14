@@ -1,4 +1,4 @@
-# Quotation Modal
+# Quotation Module
 
 Web application for creating, reviewing, and downloading quotation reports. Each organization has its own customers, activities, templates, and users. An admin sets up the company; users generate reports from the starred template.
 
