@@ -276,7 +276,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto">
+    <div
+      className="flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto"
+      style={{ flex: '1 1 0%', minHeight: 0 }}
+    >
       <Row gutter={[12, 12]}>
         <Col xs={24} sm={12} xl={4}>
           <StatCard
@@ -340,7 +343,7 @@ export default function Dashboard() {
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]}>
+      <Row gutter={[16, 16]} className="order-2 lg:order-none">
         <Col xs={24} lg={8}>
           <div className="h-full rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <Typography.Title level={5} className="!mb-4 !text-sm">Reports by status</Typography.Title>
@@ -377,6 +380,7 @@ export default function Dashboard() {
         </Col>
       </Row>
 
+      <div className="order-1 flex flex-col gap-4 lg:order-none">
       <div className="flex items-center justify-between">
         <Typography.Title level={5} className="!mb-0">Recent quotations</Typography.Title>
         <Button type="link" onClick={() => navigate('/admin/report/generated')}>
@@ -391,6 +395,7 @@ export default function Dashboard() {
           pagination={false}
           dataSource={recent}
           tableLayout="fixed"
+          scroll={{ x: 720 }}
           locale={{ emptyText: 'No quotations yet' }}
           columns={[
             slNoColumn(1, 5),
@@ -442,6 +447,7 @@ export default function Dashboard() {
             },
           ]}
         />
+      </div>
       </div>
 
       <QuotationPdfPreviewModal

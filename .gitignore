@@ -75,3 +75,8 @@ coverage/
 # ---------- Uploads / Generated Documents ----------
 uploads/
 generated/
+
+# Vendor signing key. The installed app only needs public_key.pem.
+License/private_key.pem
+License/machine_request.txt
+License/license_*.json

@@ -1,7 +1,12 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import get_settings
 from app.core.database import SessionLocal
@@ -17,6 +22,7 @@ from app.routers import (
     notifications,
     organizations,
     pdf_render,
+    license,
     permissions,
     quotation_templates,
     quotations,
@@ -52,23 +58,59 @@ app = FastAPI(
 
 register_exception_handlers(app)
 
-# In DEBUG, also allow LAN/localhost Vite origins (e.g. http://172.18.7.89:5176).
-# Starlette returns 400 on OPTIONS when Origin is not allowed.
+
+class LicenseGateMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        path = request.url.path
+        open_path = (
+            request.method == "OPTIONS"
+            or path.startswith(f"{settings.api_v1_prefix}/license")
+            or not path.startswith(settings.api_v1_prefix)
+        )
+        if open_path:
+            return await call_next(request)
+
+        from app.core.database import SessionLocal
+        from app.services import license as license_service
+
+        db = SessionLocal()
+        try:
+            current = license_service.status(db)
+        finally:
+            db.close()
+        if current["licensed"]:
+            return await call_next(request)
+        return JSONResponse(
+            status_code=403,
+            content={
+                "success": False,
+                "error": {
+                    "code": "license_required",
+                    "detail": current["message"],
+                    "status": 403,
+                },
+            },
+        )
+
+
+app.add_middleware(LicenseGateMiddleware)
+
+# Private LAN and localhost are allowed on every install. A customer opens the
+# app at that PC's own address, so no per-customer IP is listed here.
 _cors_kwargs = {
     "allow_origins": settings.cors_origin_list,
     "allow_credentials": True,
     "allow_methods": ["*"],
     "allow_headers": ["*"],
-}
-if settings.debug:
-    _cors_kwargs["allow_origin_regex"] = (
+    "allow_origin_regex": (
         r"https?://("
         r"localhost|127\.0\.0\.1|"
         r"192\.168\.\d{1,3}\.\d{1,3}|"
         r"10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"
         r"172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}"
         r")(:\d+)?"
-    )
+    ),
+}
 
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
@@ -90,8 +132,24 @@ app.include_router(custom_fields.router, prefix=f"{prefix}/custom-fields", tags=
 app.include_router(notifications.router, prefix=f"{prefix}/notifications", tags=["Notifications"])
 app.include_router(audit_logs.router, prefix=f"{prefix}/audit-logs", tags=["Audit Logs"])
 app.include_router(pdf_render.router, prefix=f"{prefix}/pdf", tags=["PDF"])
+app.include_router(license.router, prefix=f"{prefix}/license", tags=["License"])
 
 
 @app.get("/health", tags=["Health"])
 def health() -> dict:
     return {"status": "ok", "name": settings.app_name}
+
+
+class SpaStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code != 404 or "." in Path(path).name:
+                raise
+            return await super().get_response("index.html", scope)
+
+
+_frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if _frontend_dist.is_dir():
+    app.mount("/", SpaStaticFiles(directory=_frontend_dist), name="frontend")

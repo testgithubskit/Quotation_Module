@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const configuredBase = import.meta.env.VITE_API_BASE_URL?.trim();
+export const API_BASE_URL = configuredBase || '/api/v1';
 
 const TOKEN_KEY = 'access_token';
 const REFRESH_KEY = 'refresh_token';

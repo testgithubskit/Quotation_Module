@@ -1,3 +1,4 @@
+from app.models.license import LicenseInfo
 from app.models.entities import (
     Activity,
     AuditLog,
@@ -31,6 +32,7 @@ __all__ = [
     "CustomFieldEntity",
     "CustomFieldType",
     "Customer",
+    "LicenseInfo",
     "Notification",
     "NotificationKind",
     "Organization",

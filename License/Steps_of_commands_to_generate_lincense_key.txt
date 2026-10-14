@@ -1,0 +1,19 @@
+1. On the customer PC (the machine that will run the app):
+
+   python License/client_license.py --request
+
+   This writes License/machine_request.txt. Send that file to the vendor.
+   The sign-in page can also show the same fingerprint.
+
+2. On the vendor PC, in this project:
+
+   python License/generate_license.py --request License/machine_request.txt --id QM-10001 --product "Quotation Modal" --days 365
+
+   This writes License/license_QM-10001.json. Send that JSON to the customer.
+   The product name must stay "Quotation Modal" or the app will reject it.
+
+3. The customer opens the app, pastes the whole JSON, and clicks Activate license.
+
+4. Check a file locally:
+
+   python License/client_license.py --verify License/license_QM-10001.json

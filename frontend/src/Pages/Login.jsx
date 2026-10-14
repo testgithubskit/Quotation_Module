@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { App as AntApp, Button, Form, Input, Steps, Typography } from 'antd';
 import { ArrowRightOutlined } from '@ant-design/icons';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -11,6 +11,8 @@ import {
 } from '../utils/phoneValidation.js';
 import DotField from '../Components/DotField';
 import { passwordNoSpaceRules, personNameRules } from '../utils/namePasswordValidation.js';
+import { api } from '../config/auth.js';
+import LicenseActivation from '../Components/LicenseActivation.jsx';
 
 export default function Login() {
   const { login, registerOrganization, getApiErrorMessage } = useAuth();
@@ -22,6 +24,21 @@ export default function Login() {
   const [signupLoading, setSignupLoading] = useState(false);
   const [loginForm] = Form.useForm();
   const [signupForm] = Form.useForm();
+  const [licenseState, setLicenseState] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/license/status')
+      .then((response) => {
+        if (!cancelled) setLicenseState(response.data);
+      })
+      .catch(() => {
+        if (!cancelled) setLicenseState({ licensed: false, message: 'Could not read the license' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const showSignup = () => {
     setSignupStep(0);
@@ -90,30 +107,39 @@ export default function Login() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 font-sans overflow-hidden">
-      <div className="absolute inset-0 z-0">
-        <DotField
-          dotRadius={3.5}
-          dotSpacing={12}
-          bulgeStrength={67}
-          glowRadius={80}
-          sparkle={false}
-          waveAmplitude={0}
-          bulgeOnly={false}
-          gradientFrom="#0D9488"
-          gradientTo="#84CC16"
-          glowColor="#0D9488"
-        />
+    <div className="relative min-h-screen bg-slate-50 font-sans">
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="h-full w-full">
+          <DotField
+            dotRadius={3.5}
+            dotSpacing={12}
+            bulgeStrength={67}
+            glowRadius={80}
+            sparkle={false}
+            waveAmplitude={0}
+            bulgeOnly={false}
+            gradientFrom="#0D9488"
+            gradientTo="#84CC16"
+            glowColor="#0D9488"
+          />
+        </div>
       </div>
+      <div className="relative z-10 flex min-h-screen w-full items-center justify-center overflow-visible px-4 py-8">
       <AnimatePresence mode="wait">
-       {mode === 'login' ? (
+       {licenseState === null ? (
+          <div className="relative z-10 mx-auto w-fit rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <Typography.Text className="text-slate-500">Checking license...</Typography.Text>
+          </div>
+       ) : !licenseState.licensed ? (
+          <LicenseActivation status={licenseState} onActivated={setLicenseState} />
+       ) : mode === 'login' ? (
           <motion.div
             key="login"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+            className="relative z-10 mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
           >
             <Typography.Title level={3} className="!mb-1 !font-sans !text-slate-800">
               Sign in
@@ -179,7 +205,7 @@ export default function Login() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="relative z-10 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+            className="relative z-10 mx-auto w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
           >
             <Typography.Title level={3} className="!mb-1 !font-sans !text-slate-800">
               Sign up
@@ -337,6 +363,7 @@ export default function Login() {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }
