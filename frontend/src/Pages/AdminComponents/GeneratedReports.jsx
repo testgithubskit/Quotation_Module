@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button, Dropdown, Empty, Pagination, Popconfirm, Select, Space, Spin, Table, Tag, Tooltip, message,
 } from 'antd';
 import {
-  AppstoreOutlined, DeleteOutlined, DownloadOutlined, EditOutlined,
+  AppstoreOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined,
   FileExcelOutlined, FilePdfOutlined, FileTextOutlined, PlusOutlined, ReloadOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
@@ -213,31 +213,14 @@ function ReportCardThumb({ report, customer, template, organization, activityCus
   );
 }
 
-async function loadReportContext(record, customersById, templatesById) {
+async function loadReportContext(record, customersById, templatesById, shared) {
   const full = await api.get(`/quotations/${record.id}`).then((r) => r.data);
-  let template = templatesById[full.quotation_template_id];
-  if (full.quotation_template_id) {
-    try {
-      template = await api
-        .get(`/quotation-templates/${full.quotation_template_id}`)
-        .then((r) => r.data);
-    } catch {
-      /* keep list cache */
-    }
-  }
-  let organization = null;
-  try {
-    organization = await api.get('/organizations/me').then((r) => r.data);
-  } catch {
-    organization = null;
-  }
-  const activityCustomFields = await api.get('/custom-fields', { params: { entity_type: 'ACTIVITY' } }).then((r) => r.data.items || []);
   return {
     report: full,
     customer: customersById[full.customer_id],
-    template: templateForQuotation(full, template),
-    organization,
-    activityCustomFields,
+    template: templateForQuotation(full, templatesById[full.quotation_template_id]),
+    organization: shared?.organization ?? null,
+    activityCustomFields: shared?.activityCustomFields || [],
   };
 }
 
@@ -315,6 +298,17 @@ export default function GeneratedReports() {
   const [cardCtxById, setCardCtxById] = useState({});
   const pdfPreview = useQuotationPdfPreview();
   const [reviewModal, setReviewModal] = useState(null);
+  const sharedRef = useRef(null);
+
+  const ensureShared = async () => {
+    if (sharedRef.current) return sharedRef.current;
+    const [organization, activityCustomFields] = await Promise.all([
+      api.get('/organizations/me').then((r) => r.data).catch(() => null),
+      api.get('/custom-fields', { params: { entity_type: 'ACTIVITY' } }).then((r) => r.data.items || []).catch(() => []),
+    ]);
+    sharedRef.current = { organization, activityCustomFields };
+    return sharedRef.current;
+  };
 
   const mergeReviewFromDetail = (row, updated) => {
     if (!updated?.id) return row;
@@ -476,7 +470,7 @@ export default function GeneratedReports() {
     try {
       let ctx = cardCtxById[record.id];
       if (!ctx) {
-        ctx = await loadReportContext(record, customersById, templatesById);
+        ctx = await loadReportContext(record, customersById, templatesById, await ensureShared());
         setCardCtxById((s) => ({ ...s, [record.id]: ctx }));
       }
       await fn(ctx);
@@ -534,10 +528,12 @@ export default function GeneratedReports() {
     (async () => {
       const missing = paged.filter((r) => !cardCtxById[r.id]);
       if (!missing.length) return;
+      const shared = await ensureShared();
+      if (cancelled) return;
       const next = { ...cardCtxById };
       await Promise.all(missing.map(async (record) => {
         try {
-          next[record.id] = await loadReportContext(record, customersById, templatesById);
+          next[record.id] = await loadReportContext(record, customersById, templatesById, shared);
         } catch {
           /* ignore thumb errors */
         }
@@ -808,10 +804,18 @@ export default function GeneratedReports() {
                 title: 'Actions',
                 key: 'actions',
                 fixed: 'right',
-                width: 200,
+                width: 232,
                 className: 'report-actions-col',
                 render: (_, record) => (
                   <Space size={0} wrap={false} className="report-actions-cell">
+                    <Tooltip title="View">
+                      <Button
+                        type="text"
+                        icon={<EyeOutlined />}
+                        loading={busyId === record.id}
+                        onClick={() => openPreview(record)}
+                      />
+                    </Tooltip>
                     <PrintMenu
                       size="middle"
                       loading={busyId === record.id || pdfDownloading}

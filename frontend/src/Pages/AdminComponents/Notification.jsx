@@ -85,20 +85,23 @@ export default function Notification() {
   const [search, setSearch] = useState('');
   const [customerFilter, setCustomerFilter] = useState([]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) setLoading(true);
     try {
       const { data } = await api.get('/notifications');
       setRows(data?.items || []);
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Failed to load notifications'));
+      if (!quiet) message.error(getApiErrorMessage(error, 'Failed to load notifications'));
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     load();
+    const onChanged = () => load({ quiet: true });
+    window.addEventListener('notifications-changed', onChanged);
+    return () => window.removeEventListener('notifications-changed', onChanged);
   }, [load]);
 
   useEffect(() => {

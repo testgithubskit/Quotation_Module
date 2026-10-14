@@ -18,6 +18,7 @@ import Activities from './AdminComponents/Activities';
 import Configuration from './AdminComponents/Configuration';
 import Templates from './AdminComponents/Templates';
 import GeneratedReports from './AdminComponents/GeneratedReports';
+import useNotificationSocket from '../hooks/useNotificationSocket';
 import useNotificationUnreadCount from '../hooks/useNotificationUnreadCount';
 
 const { Content } = Layout;
@@ -37,6 +38,7 @@ function AdminShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { count: notificationCount } = useNotificationUnreadCount(true);
+  useNotificationSocket(true);
   const meta = PATH_META.find(([path]) => location.pathname.startsWith(path));
   const selectedKey = meta?.[1] || 'dashboard';
   const pageTitle = meta?.[2] || 'Dashboard';

@@ -7,6 +7,7 @@ import RequireRole from '../Components/RequireRole';
 import Sidebar from '../Components/sidebar';
 import GenerateReport from './UserComponents/GenerateReport';
 import Reports from './UserComponents/Reports';
+import useNotificationSocket from '../hooks/useNotificationSocket';
 import useNotificationUnreadCount from '../hooks/useNotificationUnreadCount';
 
 const { Content } = Layout;
@@ -15,6 +16,7 @@ function UserShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { count: notificationCount } = useNotificationUnreadCount(true);
+  useNotificationSocket(true);
   const onNotifications = location.pathname.includes('/notifications');
   const onGenerate = location.pathname.includes('/generate');
   const selectedKey = onNotifications ? 'notifications' : 'reports';

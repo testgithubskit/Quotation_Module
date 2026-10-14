@@ -29,6 +29,7 @@ from app.schemas.quotation import (
 from app.services.audit_log import audit_log_service
 from app.services.custom_field import validate_custom_data
 from app.services.quotation_calculation import calculate_quotation_totals
+from app.realtime.notifications import notification_hub
 from app.services.notification import notification_service
 from app.services.quotation_status import assert_editable, can_transition
 
@@ -161,14 +162,16 @@ class QuotationService:
             entity_id=quotation.id,
             new_data={"quotation_number": quotation.quotation_number, "status": initial_status.value},
         )
+        notified: list = []
         if initial_status == QuotationStatus.SENT:
-            notification_service.notify_admins_report_submitted(
+            notified = notification_service.notify_admins_report_submitted(
                 db,
                 organization_id=current_user.organization_id,
                 quotation=quotation,
                 submitter=current_user,
             )
         db.commit()
+        notification_hub.publish(notified)
         return self.get(db, current_user, quotation.id)
 
     def update(self, db: Session, current_user: User, quotation_id: UUID, payload: QuotationUpdate) -> Quotation:
@@ -317,13 +320,14 @@ class QuotationService:
                 "resubmitted_from": str(source.id),
             },
         )
-        notification_service.notify_admins_report_submitted(
+        notified = notification_service.notify_admins_report_submitted(
             db,
             organization_id=current_user.organization_id,
             quotation=quotation,
             submitter=current_user,
         )
         db.commit()
+        notification_hub.publish(notified)
         return self.get(db, current_user, quotation.id)
 
     def change_status(
@@ -391,15 +395,16 @@ class QuotationService:
             new_data={"status": target.value, "remark": remark or None},
         )
 
+        notified: list = []
         if target == QuotationStatus.SENT and old_status == QuotationStatus.REJECTED.value:
-            notification_service.notify_admins_report_submitted(
+            notified = notification_service.notify_admins_report_submitted(
                 db,
                 organization_id=current_user.organization_id,
                 quotation=quotation,
                 submitter=current_user,
             )
         elif target == QuotationStatus.ACCEPTED:
-            notification_service.notify_submitter_review(
+            notified = notification_service.notify_submitter_review(
                 db,
                 organization_id=current_user.organization_id,
                 quotation=quotation,
@@ -407,7 +412,7 @@ class QuotationService:
                 message=remark or "Your report was accepted",
             )
         elif target == QuotationStatus.REJECTED:
-            notification_service.notify_submitter_review(
+            notified = notification_service.notify_submitter_review(
                 db,
                 organization_id=current_user.organization_id,
                 quotation=quotation,
@@ -416,6 +421,7 @@ class QuotationService:
             )
 
         db.commit()
+        notification_hub.publish(notified)
         return self.get(db, current_user, quotation.id)
 
     def delete(self, db: Session, current_user: User, quotation_id: UUID) -> None:

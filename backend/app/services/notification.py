@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.crud import notification as notification_crud, user as user_crud
 from app.models import Customer, Notification, Quotation, User
 from app.models.enums import NotificationKind, UserRoleName
+from app.realtime.notifications import notification_hub
 
 
 class NotificationService:
@@ -122,6 +123,8 @@ class NotificationService:
                 db.add(row)
                 updated += 1
         db.commit()
+        if updated:
+            notification_hub.publish([current_user.id])
         return updated
 
     def notify_admins_report_submitted(
@@ -131,7 +134,8 @@ class NotificationService:
         organization_id: UUID,
         quotation: Quotation,
         submitter: User,
-    ) -> None:
+    ) -> list[UUID]:
+        notified: list[UUID] = []
         admins = user_crud.list_admins_by_org(db, organization_id)
         for admin in admins:
             if admin.id == submitter.id:
@@ -146,6 +150,8 @@ class NotificationService:
                     "message": f"Report {quotation.quotation_number} submitted by {submitter.full_name}",
                 },
             )
+            notified.append(admin.id)
+        return notified
 
     def notify_submitter_review(
         self,
@@ -155,7 +161,7 @@ class NotificationService:
         quotation: Quotation,
         kind: NotificationKind,
         message: str | None,
-    ) -> None:
+    ) -> list[UUID]:
         notification_crud.create(
             db,
             {
@@ -166,6 +172,7 @@ class NotificationService:
                 "message": message,
             },
         )
+        return [quotation.created_by]
 
 
 notification_service = NotificationService()
